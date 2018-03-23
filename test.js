@@ -1,5 +1,5 @@
-const test = require('tape');
-const {
+import test from 'tape';
+import {
   forEach,
   interval,
   fromIter,
@@ -7,7 +7,7 @@ const {
   map,
   filter,
   pipe
-} = require('./index');
+} from './index';
 
 test('it works with observables', t => {
   t.plan(12);
@@ -59,4 +59,3 @@ test('it works with iterables', t => {
 
   t.equals(expected.length, 0);
 });
-

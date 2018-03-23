@@ -1,3 +1,4 @@
+
 module.exports = {
   forEach: require('callbag-for-each'),
   fromObs: require('callbag-from-obs'),
@@ -17,4 +18,3 @@ module.exports = {
   share: require('callbag-share'),
   pipe: require('callbag-pipe')
 };
-

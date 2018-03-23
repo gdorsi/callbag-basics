@@ -1,0 +1,16 @@
+#!/usr/bin/env node
+
+let { readFileSync, writeFileSync } = require('fs');
+
+let code = readFileSync('./index.js', 'utf-8')
+    .split('\n')
+    .map(line =>
+        line.replace(
+            /\s*([a-zA-Z]+):\s*require\('([a-zA-Z\-]+)'\),?/g,
+            `export { default as $1 } from '$2';`
+        )
+    )
+    .filter(line => line.startsWith('export'))
+    .join('\n');
+
+writeFileSync('index.es.js', code, 'utf-8');

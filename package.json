@@ -1,16 +1,17 @@
 {
-  "name": "callbag-basics",
+  "name": "callbag-basics-es-modules",
   "version": "3.0.0",
   "description": "Basic callbag factories and operators to get started with",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/staltz/callbag-basics.git"
+    "url": "git+https://github.com/gdorsi/callbag-basics.git"
   },
-  "main": "index.js",
+  "main": "dist/bundle.cjs.js",
+  "module": "dist/bundle.esm.js",
+  "browser": "dist/bundle.umd.js",
   "scripts": {
-    "bundle": "$(npm bin)/browserify index.js -o dist/bundle.js",
-    "bundle.min": "node minify.js",
-    "test": "tape test.js"
+    "bundle": "./transform-main-to-es-modules && BABEL_ENV=build rollup -c",
+    "test": "BABEL_ENV=test tape -r babel-register test.js"
   },
   "author": "staltz.com",
   "license": "MIT",
@@ -21,6 +22,10 @@
     "spec",
     "observable",
     "iterable"
+  ],
+  "files": [
+    "dist/",
+    "README.md"
   ],
   "dependencies": {
     "callbag": "1.0.x",
@@ -43,9 +48,17 @@
     "callbag-pipe": "1.1.x"
   },
   "devDependencies": {
-    "browserify": "^15.2.0",
-    "google-closure-compiler-js": "^20170910.0.0",
-    "tape": "^4.8.0",
-    "uglify-js": "^3.3.8"
+    "babel-cli": "^6.26.0",
+    "babel-core": "^6.26.0",
+    "babel-plugin-external-helpers": "^6.22.0",
+    "babel-preset-env": "^1.6.1",
+    "babel-preset-stage-1": "^6.24.1",
+    "babel-register": "^6.26.0",
+    "lebab": "^2.7.7",
+    "rollup": "^0.55.5",
+    "rollup-plugin-babel": "^3.0.3",
+    "rollup-plugin-node-resolve": "^3.0.2",
+    "rollup-plugin-resolve": "0.0.1-predev.1",
+    "tape": "^4.8.0"
   }
 }
