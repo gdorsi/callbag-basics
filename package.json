@@ -1,5 +1,5 @@
 {
-  "name": "callbag-basics-es-modules",
+  "name": "callbag-basics-esmodules",
   "version": "3.1.0",
   "description": "Basic callbag factories and operators to get started with",
   "repository": {
@@ -56,7 +56,6 @@
     "babel-register": "^6.26.0",
     "lebab": "^2.7.7",
     "rollup": "^0.55.5",
-    "rollup-plugin-babel": "^3.0.3",
     "rollup-plugin-node-resolve": "^3.0.2",
     "rollup-plugin-resolve": "0.0.1-predev.1",
     "tape": "^4.8.0"

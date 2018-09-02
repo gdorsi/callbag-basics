@@ -37,27 +37,25 @@
  *                                           // ...
  */
 
-var forEach = function forEach(operation) {
-  return function (source) {
-    var talkback = void 0;
-    source(0, function (t, d) {
-      if (t === 0) talkback = d;
-      if (t === 1) operation(d);
-      if (t === 1 || t === 0) talkback(1);
-    });
-  };
+const forEach = operation => source => {
+  let talkback;
+  source(0, (t, d) => {
+    if (t === 0) talkback = d;
+    if (t === 1) operation(d);
+    if (t === 1 || t === 0) talkback(1);
+  });
 };
 
 function symbolObservablePonyfill(root) {
 	var result;
-	var _Symbol = root.Symbol;
+	var Symbol = root.Symbol;
 
-	if (typeof _Symbol === 'function') {
-		if (_Symbol.observable) {
-			result = _Symbol.observable;
+	if (typeof Symbol === 'function') {
+		if (Symbol.observable) {
+			result = Symbol.observable;
 		} else {
-			result = _Symbol('observable');
-			_Symbol.observable = result;
+			result = Symbol('observable');
+			Symbol.observable = result;
 		}
 	} else {
 		result = '@@observable';
@@ -127,254 +125,217 @@ var result = symbolObservablePonyfill(root);
  *                                           // ...
  */
 
-var fromObs = function fromObs(observable) {
-  return function (start, sink) {
-    if (start !== 0) return;
-    var dispose = void 0;
-    sink(0, function (t) {
-      if (t === 2 && dispose) {
-        if (dispose.unsubscribe) dispose.unsubscribe();else dispose();
-      }
-    });
-    observable = observable[result] ? observable[result]() : observable;
-    dispose = observable.subscribe({
-      next: function next(x) {
-        return sink(1, x);
-      },
-      error: function error(e) {
-        return sink(2, e);
-      },
-      complete: function complete() {
-        return sink(2);
-      }
-    });
-  };
-};
-
-var fromIter = function fromIter(iter) {
-  return function (start, sink) {
-    if (start !== 0) return;
-    var iterator = typeof Symbol !== 'undefined' && iter[Symbol.iterator] ? iter[Symbol.iterator]() : iter;
-    var inloop = false;
-    var got1 = false;
-    var completed = false;
-    var res = void 0;
-    function loop() {
-      inloop = true;
-      while (got1 && !completed) {
-        got1 = false;
-        res = iterator.next();
-        if (res.done) {
-          sink(2);
-          break;
-        } else sink(1, res.value);
-      }
-      inloop = false;
+const fromObs = observable => (start, sink) => {
+  if (start !== 0) return;
+  let dispose;
+  sink(0, t => {
+    if (t === 2 && dispose) {
+      if (dispose.unsubscribe) dispose.unsubscribe();
+      else dispose();
     }
-    sink(0, function (t) {
-      if (completed) return;
+  });
+  observable = observable[result] ? observable[result]() : observable;
+  dispose = observable.subscribe({
+    next: x => sink(1, x),
+    error: e => sink(2, e),
+    complete: () => sink(2)
+  });
+};
 
-      if (t === 1) {
-        got1 = true;
-        if (!inloop && !(res && res.done)) loop();
-      } else if (t === 2) {
-        completed = true;
+const fromIter = iter => (start, sink) => {
+  if (start !== 0) return;
+  const iterator =
+    typeof Symbol !== 'undefined' && iter[Symbol.iterator]
+      ? iter[Symbol.iterator]()
+      : iter;
+  let inloop = false;
+  let got1 = false;
+  let completed = false;
+  let res;
+  function loop() {
+    inloop = true;
+    while (got1 && !completed) {
+      got1 = false;
+      res = iterator.next();
+      if (res.done) {
+        sink(2);
+        break;
       }
-    });
-  };
+      else sink(1, res.value);
+    }
+    inloop = false;
+  }
+  sink(0, t => {
+    if (completed) return
+
+    if (t === 1) {
+      got1 = true;
+      if (!inloop && !(res && res.done)) loop();
+    } else if (t === 2) {
+      completed = true;
+    }
+  });
 };
 
-var fromEvent = function fromEvent(node, name) {
-  return function (start, sink) {
-    if (start !== 0) return;
-    var handler = function handler(ev) {
-      return sink(1, ev);
-    };
-    sink(0, function (t) {
-      if (t === 2) node.removeEventListener(name, handler);
-    });
-    node.addEventListener(name, handler);
-  };
+const fromEvent = (node, name) => (start, sink) => {
+  if (start !== 0) return;
+  const handler = ev => sink(1, ev);
+  sink(0, t => {
+    if (t === 2) node.removeEventListener(name, handler);
+  });
+  node.addEventListener(name, handler);
 };
 
-var fromPromise = function fromPromise(promise) {
-  return function (start, sink) {
-    if (start !== 0) return;
-    var ended = false;
-    var onfulfilled = function onfulfilled(val) {
-      if (ended) return;
-      sink(1, val);
-      sink(2);
-    };
-    var onrejected = function onrejected(err) {
-      if (ended) return;
-      sink(2, err);
-    };
-    promise.then(onfulfilled, onrejected);
-    sink(0, function (t) {
-      if (t === 2) ended = true;
-    });
+const fromPromise = promise => (start, sink) => {
+  if (start !== 0) return;
+  let ended = false;
+  const onfulfilled = val => {
+    if (ended) return;
+    sink(1, val);
+    sink(2);
   };
+  const onrejected = err => {
+    if (ended) return;
+    sink(2, err);
+  };
+  promise.then(onfulfilled, onrejected);
+  sink(0, t => {
+    if (t === 2) ended = true;
+  });
 };
 
-var interval = function interval(period) {
-  return function (start, sink) {
-    if (start !== 0) return;
-    var i = 0;
-    var id = setInterval(function () {
-      sink(1, i++);
-    }, period);
-    sink(0, function (t) {
-      if (t === 2) clearInterval(id);
-    });
-  };
+const interval = period => (start, sink) => {
+  if (start !== 0) return;
+  let i = 0;
+  const id = setInterval(() => {
+    sink(1, i++);
+  }, period);
+  sink(0, t => {
+    if (t === 2) clearInterval(id);
+  });
 };
 
-var map = function map(f) {
-  return function (source) {
-    return function (start, sink) {
-      if (start !== 0) return;
-      source(0, function (t, d) {
-        sink(t, t === 1 ? f(d) : d);
-      });
-    };
-  };
+const map = f => source => (start, sink) => {
+  if (start !== 0) return;
+  source(0, (t, d) => {
+    sink(t, t === 1 ? f(d) : d);
+  });
 };
 
 function scan(reducer, seed) {
-  var hasAcc = arguments.length === 2;
-  return function (source) {
-    return function (start, sink) {
-      if (start !== 0) return;
-      var acc = seed;
-      source(0, function (t, d) {
-        if (t === 1) {
-          acc = hasAcc ? reducer(acc, d) : (hasAcc = true, d);
-          sink(1, acc);
-        } else sink(t, d);
-      });
-    };
+  let hasAcc = arguments.length === 2;
+  return source => (start, sink) => {
+    if (start !== 0) return;
+    let acc = seed;
+    source(0, (t, d) => {
+      if (t === 1) {
+        acc = hasAcc ? reducer(acc, d) : (hasAcc = true, d);
+        sink(1, acc);
+      } else sink(t, d);
+    });
   };
 }
 
-var flatten = function flatten(source) {
-  return function (start, sink) {
-    if (start !== 0) return;
-    var exists = function exists(x) {
-      return typeof x !== 'undefined';
-    };
-    var absent = function absent(x) {
-      return typeof x === 'undefined';
-    };
-    var outerEnded = false;
-    var outerTalkback = void 0;
-    var innerTalkback = void 0;
-    function talkback(t, d) {
-      if (t === 1) (innerTalkback || outerTalkback)(1, d);
-      if (t === 2) {
-        innerTalkback && innerTalkback(2);
-        outerTalkback && outerTalkback(2);
-      }
+const flatten = source => (start, sink) => {
+  if (start !== 0) return;
+  const exists = x => typeof x !== 'undefined';
+  const absent = x => typeof x === 'undefined';
+  let outerEnded = false;
+  let outerTalkback;
+  let innerTalkback;
+  function talkback(t,d) {
+    if (t === 1) (innerTalkback || outerTalkback)(1,d);
+    if (t === 2) {
+      innerTalkback && innerTalkback(2);
+      outerTalkback && outerTalkback(2);
     }
-    source(0, function (T, D) {
-      if (T === 0) {
-        outerTalkback = D;
-        sink(0, talkback);
-      } else if (T === 1) {
-        var innerSource = D;
-        if (innerTalkback) innerTalkback(2);
-        innerSource(0, function (t, d) {
-          if (t === 0) {
-            innerTalkback = d;
-            innerTalkback(1);
-          } else if (t === 1) sink(1, d);else if (t === 2 && absent(d)) {
-            if (outerEnded) sink(2);else {
-              innerTalkback = void 0;
-              outerTalkback(1);
-            }
-          } else if (t === 2 && exists(d)) sink(2, d);
-        });
-      } else if (T === 2 && absent(D)) {
-        if (!innerTalkback) sink(2);else outerEnded = true;
-      } else if (T === 2 && exists(D)) sink(2, D);
-    });
-  };
-};
-
-var take = function take(max) {
-  return function (source) {
-    return function (start, sink) {
-      if (start !== 0) return;
-      var taken = 0;
-      var sourceTalkback = void 0;
-      function talkback(t, d) {
-        if (taken < max) sourceTalkback(t, d);
-      }
-      source(0, function (t, d) {
+  }
+  source(0, (T, D) => {
+    if (T === 0) {
+      outerTalkback = D;
+      sink(0, talkback);
+    } else if (T === 1) {
+      const innerSource = D;
+      if (innerTalkback) innerTalkback(2);
+      innerSource(0, (t, d) => {
         if (t === 0) {
-          sourceTalkback = d;
-          sink(0, talkback);
-        } else if (t === 1) {
-          if (taken < max) {
-            taken++;
-            sink(t, d);
-            if (taken === max) {
-              sink(2);
-              sourceTalkback(2);
-            }
+          innerTalkback = d;
+          innerTalkback(1);
+        } else if (t === 1) sink(1, d);
+        else if (t === 2 && absent(d)) {
+          if (outerEnded) sink(2);
+          else {
+            innerTalkback = void 0;
+            outerTalkback(1);
           }
-        } else {
-          sink(t, d);
         }
+        else if (t === 2 && exists(d)) sink(2, d);
       });
-    };
-  };
+    } else if (T === 2 && absent(D)) {
+      if (!innerTalkback) sink(2);
+      else outerEnded = true;
+    } else if (T === 2 && exists(D)) sink(2, D);
+  });
 };
 
-var skip = function skip(max) {
-  return function (source) {
-    return function (start, sink) {
-      if (start !== 0) return;
-      var skipped = 0;
-      var talkback = void 0;
-      source(0, function (t, d) {
-        if (t === 0) {
-          talkback = d;
-          sink(t, d);
-        } else if (t === 1) {
-          if (skipped < max) {
-            skipped++;
-            talkback(1);
-          } else sink(t, d);
-        } else {
-          sink(t, d);
+const take = max => source => (start, sink) => {
+  if (start !== 0) return;
+  let taken = 0;
+  let sourceTalkback;
+  function talkback(t, d) {
+    if (taken < max) sourceTalkback(t, d);
+  }
+  source(0, (t, d) => {
+    if (t === 0) {
+      sourceTalkback = d;
+      sink(0, talkback);
+    } else if (t === 1) {
+      if (taken < max) {
+        taken++;
+        sink(t, d);
+        if (taken === max) {
+          sink(2);
+          sourceTalkback(2);
         }
-      });
-    };
-  };
+      }
+    } else {
+      sink(t, d);
+    }
+  });
 };
 
-var filter = function filter(condition) {
-  return function (source) {
-    return function (start, sink) {
-      if (start !== 0) return;
-      var talkback = void 0;
-      source(0, function (t, d) {
-        if (t === 0) {
-          talkback = d;
-          sink(t, d);
-        } else if (t === 1) {
-          if (condition(d)) sink(t, d);else talkback(1);
-        } else sink(t, d);
-      });
-    };
-  };
+const skip = max => source => (start, sink) => {
+  if (start !== 0) return;
+  let skipped = 0;
+  let talkback;
+  source(0, (t, d) => {
+    if (t === 0) {
+      talkback = d;
+      sink(t, d);
+    } else if (t === 1) {
+      if (skipped < max) {
+        skipped++;
+        talkback(1);
+      } else sink(t, d);
+    } else {
+      sink(t, d);
+    }
+  });
 };
 
-var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) {
-  return typeof obj;
-} : function (obj) {
-  return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj;
+const filter = condition => source => (start, sink) => {
+  if (start !== 0) return;
+  let talkback;
+  source(0, (t, d) => {
+    if (t === 0) {
+      talkback = d;
+      sink(t, d);
+    } else if (t === 1) {
+      if (condition(d)) sink(t, d);
+      else talkback(1);
+    }
+    else sink(t, d);
+  });
 };
 
 /**
@@ -405,36 +366,27 @@ var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol
  *                                           // ...
  */
 
-function merge() {
-  for (var _len = arguments.length, sources = Array(_len), _key = 0; _key < _len; _key++) {
-    sources[_key] = arguments[_key];
-  }
-
-  return function (start, sink) {
+function merge(...sources) {
+  return (start, sink) => {
     if (start !== 0) return;
-    var n = sources.length;
-    var sourceTalkbacks = new Array(n);
-    var startCount = 0;
-    var endCount = 0;
-    var ended = false;
-    var talkback = function talkback(t, d) {
+    const n = sources.length;
+    const sourceTalkbacks = new Array(n);
+    let startCount = 0;
+    let endCount = 0;
+    let ended = false;
+    const talkback = (t, d) => {
       if (t === 2) ended = true;
-      for (var i = 0; i < n; i++) {
-        sourceTalkbacks[i] && sourceTalkbacks[i](t, d);
-      }
+      for (let i = 0; i < n; i++) sourceTalkbacks[i] && sourceTalkbacks[i](t, d);
     };
-
-    var _loop = function _loop(i) {
-      if (ended) return {
-          v: void 0
-        };
-      sources[i](0, function (t, d) {
+    for (let i = 0; i < n; i++) {
+      if (ended) return;
+      sources[i](0, (t, d) => {
         if (t === 0) {
           sourceTalkbacks[i] = d;
           if (++startCount === 1) sink(0, talkback);
         } else if (t === 2 && d) {
           ended = true;
-          for (var j = 0; j < n; j++) {
+          for (let j = 0; j < n; j++) {
             if (j !== i) sourceTalkbacks[j] && sourceTalkbacks[j](2);
           }
           sink(2, d);
@@ -443,12 +395,6 @@ function merge() {
           if (++endCount === n) sink(2);
         } else sink(t, d);
       });
-    };
-
-    for (var i = 0; i < n; i++) {
-      var _ret = _loop(i);
-
-      if ((typeof _ret === "undefined" ? "undefined" : _typeof(_ret)) === "object") return _ret.v;
     }
   };
 }
@@ -479,44 +425,39 @@ function merge() {
  *                                           // b
  */
 
-var concat = function concat() {
-  for (var _len = arguments.length, sources = Array(_len), _key = 0; _key < _len; _key++) {
-    sources[_key] = arguments[_key];
+const concat = (...sources) => (start, sink) => {
+  if (start !== 0) return;
+  const n = sources.length;
+  if (n === 0) {
+    sink(0, () => {});
+    sink(2);
+    return;
   }
-
-  return function (start, sink) {
-    if (start !== 0) return;
-    var n = sources.length;
-    if (n === 0) {
-      sink(0, function () {});
+  let i = 0;
+  let sourceTalkback;
+  const talkback = (t, d) => {
+    sourceTalkback(t, d);
+  };
+  (function next() {
+    if (i === n) {
       sink(2);
       return;
     }
-    var i = 0;
-    var sourceTalkback = void 0;
-    var talkback = function talkback(t, d) {
-      sourceTalkback(t, d);
-    };
-    (function next() {
-      if (i === n) {
-        sink(2);
-        return;
+    sources[i](0, (t, d) => {
+      if (t === 0) {
+        sourceTalkback = d;
+        if (i === 0) sink(0, talkback);
+        else sourceTalkback(1);
+      } else if (t === 2 && d) {
+        sink(2, d);
+      } else if (t === 2) {
+        i++;
+        next();
+      } else {
+        sink(t, d);
       }
-      sources[i](0, function (t, d) {
-        if (t === 0) {
-          sourceTalkback = d;
-          if (i === 0) sink(0, talkback);else sourceTalkback(1);
-        } else if (t === 2 && d) {
-          sink(2, d);
-        } else if (t === 2) {
-          i++;
-          next();
-        } else {
-          sink(t, d);
-        }
-      });
-    })();
-  };
+    });
+  })();
 };
 
 /**
@@ -548,69 +489,60 @@ var concat = function concat() {
  *                                           // ...
  */
 
-var EMPTY = {};
+const EMPTY = {};
 
-var combine = function combine() {
-  for (var _len = arguments.length, sources = Array(_len), _key = 0; _key < _len; _key++) {
-    sources[_key] = arguments[_key];
+const combine = (...sources) => (start, sink) => {
+  if (start !== 0) return;
+  const n = sources.length;
+  if (n === 0) {
+    sink(0, () => {});
+    sink(1, []);
+    sink(2);
+    return;
   }
-
-  return function (start, sink) {
-    if (start !== 0) return;
-    var n = sources.length;
-    if (n === 0) {
-      sink(0, function () {});
-      sink(1, []);
-      sink(2);
-      return;
-    }
-    var Ns = n; // start counter
-    var Nd = n; // data counter
-    var Ne = n; // end counter
-    var vals = new Array(n);
-    var sourceTalkbacks = new Array(n);
-    var talkback = function talkback(t, d) {
-      if (t === 0) return;
-      for (var i = 0; i < n; i++) {
-        sourceTalkbacks[i](t, d);
-      }
-    };
-    sources.forEach(function (source, i) {
-      vals[i] = EMPTY;
-      source(0, function (t, d) {
-        if (t === 0) {
-          sourceTalkbacks[i] = d;
-          if (--Ns === 0) sink(0, talkback);
-        } else if (t === 1) {
-          var _Nd = !Nd ? 0 : vals[i] === EMPTY ? --Nd : Nd;
-          vals[i] = d;
-          if (_Nd === 0) {
-            var arr = new Array(n);
-            for (var j = 0; j < n; ++j) {
-              arr[j] = vals[j];
-            }sink(1, arr);
-          }
-        } else if (t === 2) {
-          if (--Ne === 0) sink(2);
-        } else {
-          sink(t, d);
-        }
-      });
-    });
+  let Ns = n; // start counter
+  let Nd = n; // data counter
+  let Ne = n; // end counter
+  const vals = new Array(n);
+  const sourceTalkbacks = new Array(n);
+  const talkback = (t, d) => {
+    if (t === 0) return;
+    for (let i = 0; i < n; i++) sourceTalkbacks[i](t, d);
   };
+  sources.forEach((source, i) => {
+    vals[i] = EMPTY;
+    source(0, (t, d) => {
+      if (t === 0) {
+        sourceTalkbacks[i] = d;
+        if (--Ns === 0) sink(0, talkback);
+      } else if (t === 1) {
+        const _Nd = !Nd ? 0 : vals[i] === EMPTY ? --Nd : Nd;
+        vals[i] = d;
+        if (_Nd === 0) {
+          const arr = new Array(n);
+          for (let j = 0; j < n; ++j) arr[j] = vals[j];
+          sink(1, arr);
+        }
+      } else if (t === 2) {
+        if (--Ne === 0) sink(2);
+      } else {
+        sink(t, d);
+      }
+    });
+  });
 };
 
-var share = function share(source) {
-  var sinks = [];
-  var sourceTalkback = void 0;
+const share = source => {
+  let sinks = [];
+  let sourceTalkback;
 
   return function shared(start, sink) {
     if (start !== 0) return;
     sinks.push(sink);
 
-    var talkback = function talkback(t, d) {
+    const talkback = (t, d) => {
       if (t === 2) {
-        var i = sinks.indexOf(sink);
+        const i = sinks.indexOf(sink);
         if (i > -1) sinks.splice(i, 1);
         if (!sinks.length) sourceTalkback(2);
       } else {
@@ -619,52 +551,24 @@ var share = function share(source) {
     };
 
     if (sinks.length === 1) {
-      source(0, function (t, d) {
+      source(0, (t, d) => {
         if (t === 0) {
           sourceTalkback = d;
           sink(0, talkback);
-        } else {
-          var _iteratorNormalCompletion = true;
-          var _didIteratorError = false;
-          var _iteratorError = undefined;
-
-          try {
-            for (var _iterator = sinks.slice(0)[Symbol.iterator](), _step; !(_iteratorNormalCompletion = (_step = _iterator.next()).done); _iteratorNormalCompletion = true) {
-              var s = _step.value;
-              s(t, d);
-            }
-          } catch (err) {
-            _didIteratorError = true;
-            _iteratorError = err;
-          } finally {
-            try {
-              if (!_iteratorNormalCompletion && _iterator.return) {
-                _iterator.return();
-              }
-            } finally {
-              if (_didIteratorError) {
-                throw _iteratorError;
-              }
-            }
-          }
-        }if (t === 2) sinks = [];
+        } else for (let s of sinks.slice(0)) s(t, d);
+        if (t === 2) sinks = [];
       });
-      return;
+      return
     }
 
     sink(0, talkback);
-  };
+  }
 };
 
-function pipe() {
-  for (var _len = arguments.length, cbs = Array(_len), _key = 0; _key < _len; _key++) {
-    cbs[_key] = arguments[_key];
-  }
-
-  var res = cbs[0];
-  for (var i = 1, n = cbs.length; i < n; i++) {
-    res = cbs[i](res);
-  }return res;
+function pipe(...cbs) {
+  let res = cbs[0];
+  for (let i = 1, n = cbs.length; i < n; i++) res = cbs[i](res);
+  return res;
 }
 
 export { forEach, fromObs, fromIter, fromEvent, fromPromise, interval, map, scan, flatten, take, skip, filter, merge, concat, combine, share, pipe };
