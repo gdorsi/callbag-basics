@@ -1,4 +1,6 @@
-# Callbag basics 👜
+# Callbag basics esmodules 👜
+
+A fork of `callbag-basics` with esmodules support!
 
 Basic callbag factories and operators to get started with. [Callbag](https://github.com/callbag/callbag) is just a spec, but `callbag-basics` is a real library you can use.
 
@@ -15,12 +17,12 @@ Imagine a hybrid between an Observable and an (Async)Iterable, that's what callb
 
 ## Usage
 
-`npm install callbag-basics`
+`npm install callbag-basics-esmodules`
 
 Import operators and factories:
 
 ```js
-const {forEach, fromIter, map, filter, pipe} = require('callbag-basics');
+import { forEach, fromIter, map, filter, pipe } from "callbag-basics-esmodules";
 ```
 
 ## Try it online
@@ -34,12 +36,18 @@ const {forEach, fromIter, map, filter, pipe} = require('callbag-basics');
 Log XY coordinates of click events on `<button>` elements:
 
 ```js
-const {forEach, fromEvent, map, filter, pipe} = require('callbag-basics');
+import {
+  forEach,
+  fromEvent,
+  map,
+  filter,
+  pipe
+} from "callbag-basics-esmodules";
 
 pipe(
-  fromEvent(document, 'click'),
-  filter(ev => ev.target.tagName === 'BUTTON'),
-  map(ev => ({x: ev.clientX, y: ev.clientY})),
+  fromEvent(document, "click"),
+  filter(ev => ev.target.tagName === "BUTTON"),
+  map(ev => ({ x: ev.clientX, y: ev.clientY })),
   forEach(coords => console.log(coords))
 );
 
@@ -51,7 +59,14 @@ pipe(
 Pick the first 5 odd numbers from a clock that ticks every second, then start observing them:
 
 ```js
-const {forEach, interval, map, filter, take, pipe} = require('callbag-basics');
+import {
+  forEach,
+  interval,
+  map,
+  filter,
+  take,
+  pipe
+} from "callbag-basics-esmodules";
 
 pipe(
   interval(1000),
@@ -73,7 +88,7 @@ pipe(
 From a range of numbers, pick 5 of them and divide them by 4, then start pulling those one by one:
 
 ```js
-const {forEach, fromIter, take, map, pipe} = require('callbag-basics');
+import { forEach, fromIter, take, map, pipe } from "callbag-basics-esmodules";
 
 function* range(from, to) {
   let i = from;
@@ -138,7 +153,7 @@ The list below shows what's included.
 
 ### More
 
-- [*Check the Wiki*](https://github.com/callbag/callbag/wiki)
+- [_Check the Wiki_](https://github.com/callbag/callbag/wiki)
 
 ## Terminology
 
@@ -154,4 +169,3 @@ The list below shows what's included.
 
 **The Callbag philosophy is: build it yourself.** :)
 You can send pull requests, but even better, don't depend on the repo owner accepting it. Just fork the project, customize it as you wish, and publish your fork on npm. As long as it follows the callbag spec, everything will be interoperable! :)
-
